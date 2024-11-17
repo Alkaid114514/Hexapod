@@ -23,7 +23,9 @@ void loop()
   {
     float incomingByte = Serial.parseFloat(); // 读取一个字节
     Serial.println(incomingByte);
-    pwm1.setPositionDeg(0, incomingByte);
+    uint8_t indices[1] = {0};
+    float degs[1] = {incomingByte};
+    pwm1.setPositionsDegSameVelocity(indices, degs, 1, 40);
   }
 }
 

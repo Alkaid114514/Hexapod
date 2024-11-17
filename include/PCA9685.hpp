@@ -10,10 +10,14 @@ class PCA9685
 private:
     Adafruit_PWMServoDriver pwmDriver;
     float currentPWM[16];
-    /* data */
+
 public:
     PCA9685(int, TwoWire);
     PCA9685(int);
-    void setPositionRad(uint8_t index, float rad, uint32_t delayMS = 10);
-    void setPositionDeg(uint8_t index, float deg, uint32_t delayMS = 10);
+    // void setPositionRad(uint8_t index, float rad, uint32_t delayMS = 10);
+    void setPositionsRadSameTime(uint8_t indices[], float rads[], uint8_t numServos, float rotationTimeMS);
+    void setPositionsRadSameVelocity(uint8_t indices[], float rads[], uint8_t numServos, float angularVelocity = 10.0f);
+    // void setPositionDeg(uint8_t index, float deg, uint32_t delayMS = 10);
+    void setPositionsDegSameTime(uint8_t indices[], float degs[], uint8_t numServos, float rotationTimeMS);
+    void setPositionsDegSameVelocity(uint8_t indices[], float rads[], uint8_t numServos, float angularVelocity = 10.0f);
 };
