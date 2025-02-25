@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>生命搜索六足机器人</title>
+    <style>
+        /* 新增表格样式 */
+        .config-table {
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+        .config-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        .config-table input {
+            width: 300px;
+            padding: 5px;
+        }
+        
+        /* 原有消息框样式 */
+        #messages {
+            height: 300px;
+            width: 500px;
+            border: 1px solid #ccc;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .controller {
+            position:absolute;
+            margin: 50px;
+            left:900px;
+            top: 100px;
+        }
+        button {
+            padding:20px;
+            margin: 10px;
+            font-size:18px;
+        }
+        #status {
+            color:green;
+            margin-top:50px;
+        }
+        #left {
+            position:absolute;
+            right:250px;
+        }
+        .biaoti {
+            position:absolute;
+            left: 940px;
+            color:red;
+            font-size: 30px;
+            padding:10px;
+            margin: 10px;
+            background-color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket实时数据接收(大一年度项目)</h1>
+    <div class="biaoti">控制台</div>
+    
+    <!-- 新增配置表格 -->
+    <table class="config-table">
+        <tr>
+            <td>服务器地址：</td>
+            <td>
+                <input type="text" 
+                       id="serverAddress" 
+                       placeholder="ws://localhost:8080">
+            </td>
+        </tr>
+    </table>
+
+    <!-- 操作按钮 -->
+    <button id="connectBtn">连接服务器</button>
+    <button id="disconnectBtn" disabled>断开连接</button>
+
+    <!-- 消息显示区域 -->
+    <div id="messages"></div>
+
+    <script src="app.js"></script>
+        <div class="controller">
+            <button id="forward">↑ 前进</button><br>
+            <button id="left">← 左转</button>
+            <button id="stop">停止</button>
+            <button id="right">→ 右转</br></button><br>
+            <button id="backward">↓ 后退</button>
+            <p id="status">状态: 未连接</p >
+        </div>
+        <script src="client.js"></script>
+</body>
+</html>
