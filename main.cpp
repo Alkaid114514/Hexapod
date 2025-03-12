@@ -20,7 +20,11 @@ WebSocketsServer webSocket(81); // 初始化WebSocket服务器
 #define SDAPIN 21  // 接对应引脚
 #define SCLPIN 20
 Adafruit_MPU6050 mpu;
-sensors_event_t a,w,t;
+sensors_event_t a,w,t,g;
+  // 互补滤波参数
+  float alpha = 0.98; // 融合系数
+  float pitch = 0;    // 俯仰角
+  float roll = 0;     // 横滚角
 
 // 创建GPS解析对象
 TinyGPSPlus gps;
@@ -37,6 +41,7 @@ void setup() {
   WiFi.begin(ssid, password);
   Wire.begin(SDAPIN, SCLPIN);
   mpu.begin(0x68, &Wire,SCLPIN);
+
 
   // 等待Wi-Fi连接
   while (WiFi.status() != WL_CONNECTED) {
@@ -86,17 +91,18 @@ void loop() {
     webSocket.broadcastTXT("No motion");
   }
   mpu.getEvent(&a, &w, &t);
-  float roll = atan2(a.acceleration.y, a.acceleration.z)/3.1415926*180;
-  float pitch = atan2(-a.acceleration.x, sqrt(a.acceleration.y*a.acceleration.y + a.acceleration.z*a.acceleration.z))/3.1415926*180;
-  float yaw = atan2(w.gyro.y, w.gyro.z)/3.1415926*180;
-  Serial.println("roll: ");
-  Serial.println(roll);
-  Serial.println(" pitch: ");
-  Serial.println(pitch);
-  Serial.println(" yaw: ");
-  Serial.println(yaw);
+  // 计算加速度计的姿态角
+  float accel_pitch = atan2(a.acceleration.y, a.acceleration.z) * 180 / PI;
+  float accel_roll = atan2(a.acceleration.x, a.acceleration.z) * 180 / PI;
 
-  delay(1000); // 调整延迟以适应你的应用需求
+  // 计算陀螺仪的角速度积分
+  float gyro_pitch = pitch + g.gyro.y * 0.01; // 0.01 是时间间隔（假设 10ms）
+  float gyro_roll = roll + g.gyro.x * 0.01;
+
+  // 互补滤波融合加速度计和陀螺仪数据
+  pitch = alpha * gyro_pitch + (1 - alpha) * accel_pitch;
+  roll = alpha * gyro_roll + (1 - alpha) * accel_roll;
+  delay(10); // 调整延迟以适应你的应用需求
 }
 
 void displayGPSInfo() {
