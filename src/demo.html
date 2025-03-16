@@ -18,12 +18,13 @@
         }
         
         /* 原有消息框样式 */
-        #messages {
-            height: 300px;
-            width: 500px;
+        #messagesSensor1, #messagesSensor2, #messagesSensor3{
+            height: 200px;
+            width: 300px;
             border: 1px solid #ccc;
             overflow-y: auto;
             padding: 10px;
+            margin-bottom: 10px;
         }
         .controller {
             position:absolute;
@@ -76,7 +77,9 @@
     <button id="disconnectBtn" disabled>断开连接</button>
 
     <!-- 消息显示区域 -->
-    <div id="messages"></div>
+    <div id="messagesSensor1"></div>
+    <div id="messagesSensor2"></div>
+    <div id="messagesSensor3"></div>
 
     <script src="app.js"></script>
         <div class="controller">
