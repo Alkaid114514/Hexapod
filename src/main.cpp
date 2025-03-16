@@ -2,9 +2,14 @@
 #include <WebSocketsServer.h>
 #include <Arduino.h>
 #include <TinyGPS++.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <math.h>
+#include <Wire.h>
+#include <ArduinoJson.h>
 
 // 替换为你的Wi-Fi网络名称和密码
-const char* ssid = "666";
+const char* ssid = "ceshi";
 const char* password = "zbfql666";
 
 WebSocketsServer webSocket(81); // 初始化WebSocket服务器
@@ -13,6 +18,17 @@ WebSocketsServer webSocket(81); // 初始化WebSocket服务器
 // 硬件串口配置
 #define GPS_RX_PIN 16  // ESP32的GPIO16连接NEO-6M的TX引脚
 #define GPS_BAUDRATE 9600
+#define SDAPIN 21  // 接对应引脚
+#define SCLPIN 20
+
+unsigned long lastSensor1=0; 
+
+Adafruit_MPU6050 mpu;
+sensors_event_t a,w,t,g;
+  // 互补滤波参数
+  float alpha = 0.98; // 融合系数
+  float pitch = 0;    // 俯仰角
+  float roll = 0;     // 横滚角
 
 // 创建GPS解析对象
 TinyGPSPlus gps;
@@ -25,12 +41,16 @@ void displayGPSInfo();
 
 void setup() {
   Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  Wire.begin(SDAPIN, SCLPIN);
+  mpu.begin(0x68, &Wire,SCLPIN);
+
 
   // 等待Wi-Fi连接
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Serial.println(WiFi.status());
   }
   Serial.println("WiFi connected");
 
@@ -64,18 +84,42 @@ void loop() {
     Serial.println("未检测到GPS数据，请检查接线！");
     while(true); // 停止运行
   }
-
-  // 读取HC-SR501传感器状态
-  int pirState = digitalRead(PIN_PIR); // 替换为HC-SR501连接的引脚
-
-  // 如果传感器状态发生变化，发送更新到所有WebSocket客户端
-  if (pirState == HIGH) {
-    webSocket.broadcastTXT("Motion detected");
-  } else {
-    webSocket.broadcastTXT("No motion");
+  if (millis() - lastSensor1 >= 300) {
+    int pirState = digitalRead(PIN_PIR);
+    DynamicJsonDocument doc(128);
+    doc["type"] = "Sensor1";
+    doc["data"] = (pirState == HIGH) ? "检测到运动！" : "未探测到运动";
+    String output;
+    serializeJson(doc, output);
+    webSocket.broadcastTXT(output);
+    lastSensor1 = millis();  // 更新时间戳
   }
+  mpu.getEvent(&a, &w, &t);
+  // 计算加速度计的姿态角
+  float accel_pitch = atan2(a.acceleration.y, a.acceleration.z) * 180 / PI;
+  float accel_roll = atan2(a.acceleration.x, a.acceleration.z) * 180 / PI;
 
-  delay(1000); // 调整延迟以适应你的应用需求
+  // 计算陀螺仪的角速度积分
+  float gyro_pitch = pitch + g.gyro.y * 0.01; // 0.01 是时间间隔（假设 10ms）
+  float gyro_roll = roll + g.gyro.x * 0.01;
+
+  // 互补滤波融合加速度计和陀螺仪数据
+  pitch = alpha * gyro_pitch + (1 - alpha) * accel_pitch;
+  roll = alpha * gyro_roll + (1 - alpha) * accel_roll;
+  static unsigned long lastSend = 0;
+  if (millis() - lastSend > 10) { 
+    DynamicJsonDocument doc(256);
+    doc["type"] = "Sensor3";
+    JsonObject data = doc.createNestedObject("data");
+    data["pitch"] = pitch;
+    data["roll"] = roll;
+
+    String output;
+    serializeJson(doc, output);
+    webSocket.broadcastTXT(output);
+    lastSend = millis();
+  }
+  delay(10); // 调整延迟以适应你的应用需求
 }
 
 void displayGPSInfo() {
@@ -118,7 +162,27 @@ void displayGPSInfo() {
   }
 
   // 通过WebSocket广播GPS数据
-  webSocket.broadcastTXT(gpsData);
+  //webSocket.broadcastTXT(String("{\"type\":\"Sensor2\",\"data\":\"") + gpsData + "\"}");
+// 将 GPS 数据构造为 JSON 对象
+
+DynamicJsonDocument doc(512);
+doc["type"] = "Sensor2";
+
+JsonObject data = doc.createNestedObject("data"); // 嵌套对象
+data["satellites"] = gps.satellites.value();
+
+if (gps.location.isValid()) {
+  data["latitude"] = gps.location.lat();
+  data["longitude"] = gps.location.lng();
+  data["altitude"] = gps.altitude.meters();
+  data["speed"] = gps.speed.kmph();
+} else {
+  data["status"] = "定位中...";
+}
+
+String output;
+serializeJson(doc, output);
+webSocket.broadcastTXT(output);
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
